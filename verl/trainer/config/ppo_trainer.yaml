@@ -46,6 +46,9 @@ actor_rollout_ref:
   # Timeout for operations executed against the process group
   nccl_timeout: 600
 
+  # Quantization type for the model (e.g., "nf4" for 4-bit quantization, null for no quantization)
+  quant_type: null
+
   # Rollout model config.
   rollout:
 
