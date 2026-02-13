@@ -89,6 +89,8 @@ class HFModelConfig(BaseConfig):
     fused_kernel_options: dict = field(default_factory=dict)
 
     architectures: Optional[list[str]] = None
+    # add normalization argument
+    quant_type: Optional[str] = None
 
     def __post_init__(self):
         import_external_libs(self.external_lib)
