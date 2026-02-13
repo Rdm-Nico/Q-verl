@@ -29,7 +29,6 @@ from tensordict import TensorDict
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp.api import FullStateDictConfig, ShardedStateDictConfig, StateDictType
 from torch.distributed.tensor import DTensor
-from transformers import BitsAndBytesConfig
 
 import verl.utils.torch_functional as verl_F
 from verl.models.transformers.monkey_patch import apply_monkey_patch
@@ -203,21 +202,10 @@ class FSDPEngine(BaseEngine):
             warnings.simplefilter("ignore")
 
             auto_class = get_hf_auto_model_class(hf_config=self.model_config.hf_config)
-            # add quantization if presents
-            bnb_config = BitsAndBytesConfig(
-                            load_in_4bit=True,
-                            bnb_4bit_quant_type= self.model_config.quant_type,
-                            bnb_4bit_compute_dtype=torch_dtype,
-                            bnb_4bit_quant_storage=torch_dtype,
-                        ) if self.model_config.quant_type == 'nf4' else None
-
-            if bnb_config:
-                print(f"quantize the model: {self.model_config.local_path} with: {self.model_config.quant_type}")
             
             module = auto_class.from_pretrained(
                 pretrained_model_name_or_path=self.model_config.local_path,
                 torch_dtype=torch_dtype,
-                quantization_config=bnb_config,
                 config=self.model_config.hf_config,
                 trust_remote_code=self.model_config.trust_remote_code,
             )

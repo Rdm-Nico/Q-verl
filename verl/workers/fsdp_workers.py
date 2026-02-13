@@ -89,7 +89,7 @@ from verl.workers.config import FSDPCriticConfig, FSDPEngineConfig, HFModelConfi
 from verl.workers.config.optimizer import build_optimizer
 from verl.workers.rollout import get_rollout_class
 from verl.workers.sharding_manager.fsdp_ulysses import FSDPUlyssesShardingManager
-
+from transformers import BitsAndBytesConfig
 logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 
@@ -279,6 +279,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
         use_liger=False,
         role="actor",
         enable_activation_offload=False,
+        enable_quant_type:str=None
     ):
         from torch.distributed.fsdp import CPUOffload, MixedPrecision
         from transformers import (
@@ -374,9 +375,21 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
                 else:
                     actor_module_class = AutoModel
 
+            # enable quantization if presents
+            bnb_config = BitsAndBytesConfig(
+                            load_in_4bit=True,
+                            bnb_4bit_quant_type= self.model_config.quant_type,
+                            bnb_4bit_compute_dtype=torch_dtype,
+                            bnb_4bit_quant_storage=torch_dtype,
+                        ) if enable_quant_type == 'nf4' else None
+
+            if bnb_config:
+                print(f"quantize the model: {self.model_config.local_path} with: {self.model_config.quant_type}")
+            
             actor_module = actor_module_class.from_pretrained(
                 pretrained_model_name_or_path=local_path,
                 torch_dtype=torch_dtype,
+                quantization_config=bnb_config,
                 config=actor_model_config,
                 trust_remote_code=trust_remote_code,
                 attn_implementation=attn_implementation,
@@ -771,6 +784,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
                 fsdp_config = FSDPEngineConfig()
 
             local_path = copy_to_local(self.config.model.path, use_shm=use_shm)
+            
             (
                 self.actor_module_fsdp,
                 self.actor_optimizer,
@@ -788,6 +802,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
                 use_liger=self.config.model.get("use_liger", False),
                 role="actor",
                 enable_activation_offload=self.config.model.get("enable_activation_offload", False),
+                enable_quant_type=self.config.quant_type
             )
 
             # get the original unwrapped module
