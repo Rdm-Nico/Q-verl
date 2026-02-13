@@ -386,6 +386,8 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
             if bnb_config:
                 print(f"quantize the model: {self.model_config.local_path} with: {self.model_config.quant_type}")
             
+            print(f"load model with quant-type= {self.config.quant_type}")
+
             actor_module = actor_module_class.from_pretrained(
                 pretrained_model_name_or_path=local_path,
                 torch_dtype=torch_dtype,
